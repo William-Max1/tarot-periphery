@@ -1,6 +1,7 @@
 pragma solidity =0.6.6;
 pragma experimental ABIEncoderV2;
 
+import "./interfaces/IFactory.sol";
 import "./interfaces/IRouter02.sol";
 import "./interfaces/IPoolToken.sol";
 import "./interfaces/IBorrowable.sol";
@@ -21,6 +22,8 @@ contract Router02 is IRouter02, ITarotCallee {
     address public immutable override cDeployer;
     address public immutable override WETH;
 
+
+    
     modifier ensure(uint256 deadline) {
         require(deadline >= block.timestamp, "TarotRouter: EXPIRED");
         _;
@@ -108,7 +111,7 @@ contract Router02 is IRouter02, ITarotCallee {
         address underlying = IPoolToken(poolToken).underlying();
         if (isVaultToken(underlying)) {
             address uniswapV2Pair = IVaultToken(underlying).underlying();
-            // _permit(uniswapV2Pair, amount, deadline, permitData);
+            _permit(uniswapV2Pair, amount, deadline, permitData);
             TransferHelper.safeTransferFrom(
                 uniswapV2Pair,
                 msg.sender,
@@ -118,7 +121,7 @@ contract Router02 is IRouter02, ITarotCallee {
             IVaultToken(underlying).mint(poolToken);
             return IPoolToken(poolToken).mint(to);
         } else {
-            // _permit(underlying, amount, deadline, permitData);
+            _permit(underlying, amount, deadline, permitData);
             return _mint(poolToken, underlying, amount, msg.sender, to);
         }
     }
@@ -735,18 +738,10 @@ contract Router02 is IRouter02, ITarotCallee {
         returns (address borrowable)
     {
         require(index < 2, "TarotRouter: INDEX_TOO_HIGH");
-        borrowable = address(
-            uint256(
-                keccak256(
-                    abi.encodePacked(
-                        hex"ff",
-                        bDeployer,
-                        keccak256(abi.encodePacked(factory, underlying, index)),
-                        hex"067f8dd3c5fa034c69b1d9017422ce5a724f7633bb87e2b00437b825ee74da48" // Borrowable bytecode keccak256
-                    )
-                )
-            )
-        );
+        if(index == 0)
+        (,,,borrowable,) = IFactory(factory).getLendingPool(underlying);
+        else
+        (,,,,borrowable) = IFactory(factory).getLendingPool(underlying);
     }
 
     function getCollateral(address underlying)
@@ -756,18 +751,7 @@ contract Router02 is IRouter02, ITarotCallee {
         override
         returns (address collateral)
     {
-        collateral = address(
-            uint256(
-                keccak256(
-                    abi.encodePacked(
-                        hex"ff",
-                        cDeployer,
-                        keccak256(abi.encodePacked(factory, underlying)),
-                        hex"f70b21cd5817faae2f81bc35b42bac82c6657ca6c7a29899eff2aa4eb8e18783" // Collateral bytecode keccak256
-                    )
-                )
-            )
-        );
+        (,,collateral,,) = IFactory(factory).getLendingPool(underlying);
     }
 
     function getLendingPool(address underlying)
@@ -781,8 +765,6 @@ contract Router02 is IRouter02, ITarotCallee {
             address borrowableB
         )
     {
-        collateral = getCollateral(underlying);
-        borrowableA = getBorrowable(underlying, 0);
-        borrowableB = getBorrowable(underlying, 1);
+        (,,collateral,borrowableA,borrowableB) = IFactory(factory).getLendingPool(underlying);
     }
 }
