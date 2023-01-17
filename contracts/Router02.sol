@@ -87,7 +87,7 @@ contract Router02 is IRouter02, ITarotCallee {
         uint256 deadline
     )
         external
-        payable
+        payable       
         virtual
         override
         ensure(deadline)
@@ -108,7 +108,7 @@ contract Router02 is IRouter02, ITarotCallee {
         address underlying = IPoolToken(poolToken).underlying();
         if (isVaultToken(underlying)) {
             address uniswapV2Pair = IVaultToken(underlying).underlying();
-            _permit(uniswapV2Pair, amount, deadline, permitData);
+            // _permit(uniswapV2Pair, amount, deadline, permitData);
             TransferHelper.safeTransferFrom(
                 uniswapV2Pair,
                 msg.sender,
@@ -118,7 +118,7 @@ contract Router02 is IRouter02, ITarotCallee {
             IVaultToken(underlying).mint(poolToken);
             return IPoolToken(poolToken).mint(to);
         } else {
-            _permit(underlying, amount, deadline, permitData);
+            // _permit(underlying, amount, deadline, permitData);
             return _mint(poolToken, underlying, amount, msg.sender, to);
         }
     }
